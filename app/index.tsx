@@ -6,6 +6,9 @@ import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { peopleList } from "../src/people";
 import { useNavigation } from 'expo-router';
 import { router } from 'expo-router';
+import { useFocusEffect } from "@react-navigation/native"; // 👈 Importa l'hook
+import { Alert } from "react-native";
+
 interface FlagState {
   [key: number]: string;
 }
@@ -21,6 +24,31 @@ const OPTIONS = {
 const PeopleScreen: React.FC = () => {
   const [flags, setFlags] = useState<FlagState>({});
   const navigation = useNavigation();
+  const [people, setPeople] = useState(peopleList); // 👈 Inizializza con `peopleList`, ma poi aggiorna
+    const [showUnselectedOnly, setShowUnselectedOnly] = useState(false);
+  useFocusEffect(
+    React.useCallback(() => {
+      const loadPeople = async () => {
+        const storedPeople = await AsyncStorage.getItem("peopleList");
+        if (storedPeople) {
+          setPeople(JSON.parse(storedPeople)); // 👈 Aggiorna lo stato con i dati salvati
+        }
+      };
+      loadPeople();
+    }, [])
+  );
+  
+  const confirmReset = () => {
+    Alert.alert(
+      "Conferma Reset",
+      "Sei sicuro di voler resettare tutte le selezioni?",
+      [
+        { text: "Annulla", style: "cancel" },
+        { text: "Reset", style: "destructive", onPress: () => setFlags({}) },
+      ]
+    );
+  };
+  
 
   React.useLayoutEffect(() => {
     navigation.setOptions({ headerShown: false });
@@ -35,6 +63,11 @@ const PeopleScreen: React.FC = () => {
     };
     loadFlags();
   }, []);
+
+  const toggleFilter = () => {
+    setShowUnselectedOnly((prev) => !prev);
+  };
+  
 
   const updateSelection = async (id: number, value: string) => {
     const newFlags = { ...flags, [id]: value };
@@ -64,7 +97,7 @@ const PeopleScreen: React.FC = () => {
 
   {/* LISTA DEI NOMI */}
   <FlatList
-  data={peopleList}
+  data={people.filter(person => !showUnselectedOnly || !flags[person.id])} // 👈 Filtra le persone
   keyExtractor={(item) => item.id.toString()}
   renderItem={({ item }) => (
     <View style={styles.item}>
@@ -89,16 +122,31 @@ const PeopleScreen: React.FC = () => {
       </View>
     </View>
   )}
-  contentContainerStyle={{ paddingBottom: 80 }} // 👈 Aggiunge spazio per non coprire il footer
+  contentContainerStyle={{ paddingBottom: 80 }} 
 />
 
-{/* FOOTER FIXED SOPRA LA NAVBAR */}
 <View style={styles.footer}>
-<TouchableOpacity onPress={() => router.push("/peopleManager")}>
-  <Icon name="account-group" size={28} color="black" />
-</TouchableOpacity>
+  <View style={styles.footerRow}>
+    {/* ICONA GESTIONE PERSONE (SINISTRA) */}
+    <TouchableOpacity onPress={() => router.push("/peopleManager")}>
+      <Icon name="account-group" size={28} color="black" />
+    </TouchableOpacity>
+
+    {/* ICONA FILTRO (CENTRO) */}
+    <TouchableOpacity onPress={toggleFilter}>
+      <Icon name={showUnselectedOnly ? "filter-remove" : "filter"} size={28} color="blue" />
+    </TouchableOpacity>
+
+    {/* ICONA RESET RADIO (DESTRA) */}
+    <TouchableOpacity onPress={() => confirmReset()}>
+      <Icon name="refresh" size={28} color="red" />
+    </TouchableOpacity>
+  </View>
+
+  {/* TOTALE RADUNO E CENA (SOTTO) */}
   <Text style={styles.totalText}>Totale Raduno e Cena: {totalSelected}</Text>
 </View>
+
 
 
 
@@ -186,19 +234,21 @@ const styles = StyleSheet.create({
     borderColor: "#000", // Bordo nero per i selezionati
   },
 
-  // **FOOTER (TOTALE)**
   footer: {
-    flex: 0, // 👈 Impedisce che venga coperto dalla FlatList
-    alignSelf: "stretch", // 👈 Occupa tutta la larghezza disponibile
-    padding: 15,
+    flexDirection: "column", // 👈 Struttura a colonne
     alignItems: "center",
+    padding: 10,
     backgroundColor: "white",
-    borderRadius:5,
-
     borderTopWidth: 2,
     borderTopColor: "#000",
-    zIndex: 10, // 👈 Mantiene il footer sopra la lista
-    elevation: 5, // 👈 Migliora la visibilità su Android
+  },
+  
+  footerRow: {
+    flexDirection: "row", // 👈 Allinea le icone in riga
+    justifyContent: "space-between", // 👈 Una a sinistra, una a destra
+    width: "100%", // 👈 Occupa tutta la larghezza
+    paddingHorizontal: 20,
+    marginBottom: 5, // 👈 Distanza dal totale
   },
   
   

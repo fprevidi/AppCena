@@ -3,7 +3,7 @@ import { View, Text, FlatList, TextInput, StyleSheet, SafeAreaView, TouchableOpa
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { useNavigation } from 'expo-router';
-
+import { peopleList } from "../src/people"; // 👈 Importiamo la lista iniziale
 interface Person {
   id: number;
   name: string;
@@ -17,10 +17,16 @@ const PeopleManagerScreen: React.FC = () => {
   useEffect(() => {
     const loadPeople = async () => {
       const storedPeople = await AsyncStorage.getItem("peopleList");
-      if (storedPeople) setPeople(JSON.parse(storedPeople));
+      if (storedPeople) {
+        setPeople(JSON.parse(storedPeople)); 
+      } else {
+        setPeople(peopleList); // 👈 Se `AsyncStorage` è vuoto, usa `peopleList`
+        await AsyncStorage.setItem("peopleList", JSON.stringify(peopleList)); // 👈 Salva la lista iniziale
+      }
     };
     loadPeople();
   }, []);
+  
 
   const savePeople = async (updatedPeople: Person[]) => {
     setPeople(updatedPeople);
